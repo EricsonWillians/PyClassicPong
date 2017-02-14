@@ -10,7 +10,7 @@ WINDOW_HEIGHT = 728
 GAME_COLOR = (255, 255, 255)
 PAD_WIDTH = 16
 PAD_HEIGHT = 64
-PAD_SPEED = 6
+PAD_SPEED = 8
 BALL_SIZE = 16
 BALL_SPEED = 8
 FIRST_PLAYER = 0
@@ -19,6 +19,8 @@ SCORE_SIZE = 128
 INITIAL_SCORE = 0
 MAX_SCORE = 10
 SCORE_SPACING = 64
+MIDDLE_LINE_WIDTH = 4
+MIDDLE_LINE_HEIGHT = 16
 
 pygame.init()
 
@@ -67,7 +69,7 @@ class Ball:
 		self.speed = BALL_SPEED
 	
 	def bounce(self, diff):
-		self.direction = (180 + self.direction) % 360
+		self.direction = (180 - self.direction) % 360
 		self.direction -= diff
 		self.speed *= 1.1
 	
@@ -116,9 +118,14 @@ def handle_events():
 				player2.up = False
 				player2.down = True
 
+def draw_middle_line():
+	for n in range(0, WINDOW_HEIGHT, 38):
+		pygame.draw.rect(screen, GAME_COLOR, pygame.Rect((WINDOW_WIDTH / 2) - (MIDDLE_LINE_WIDTH / 2), n, MIDDLE_LINE_WIDTH, MIDDLE_LINE_HEIGHT))
+
 def redraw():
 	pygame.display.flip()
 	screen.fill((0, 0, 0))
+	draw_middle_line()
 	player1.draw()
 	player2.draw()
 	score1.draw()
@@ -134,10 +141,6 @@ def redraw():
 	elif ball.x > WINDOW_WIDTH:
 		score1.value += 1
 		ball.reset()
-	if ball.y <= 0:
-		ball.direction = (360 - ball.direction) % 360
-	elif ball.y > WINDOW_HEIGHT - ball.w:
-		ball.direction = (360 - ball.direction) % 360
 	if score1.value == MAX_SCORE or score2.value == MAX_SCORE:
 		score1.value = INITIAL_SCORE
 		score2.value = INITIAL_SCORE
@@ -154,13 +157,17 @@ def redraw():
 	elif player2.down and (player2.y + player2.h) < WINDOW_HEIGHT:
 		player2.y += PAD_SPEED
 		
-	# Handles the ball.
+	# Bounces the ball.
 	
+	if ball.y <= 0:
+		ball.direction = (360 - ball.direction) % 360
+	elif ball.y > WINDOW_HEIGHT - ball.w:
+		ball.direction = (360 - ball.direction) % 360
 	if check_collision(player1, ball):
-		diff = (player1.y + player1.h / 2) - (ball.y + ball.h / 2)
+		diff = ((player1.y + player1.h) / 2) - ((ball.y + ball.h) / 2)
 		ball.bounce(diff)
 	elif check_collision(player2, ball):
-		diff = (player2.y + player2.h / 2) - (ball.y + ball.h / 2)
+		diff = ((player2.y + player2.h) / 2) - ((ball.y + ball.h) / 2)
 		ball.bounce(diff)
 	
 	# screen.blit(monospace.render("Bla", 1, (255, 255, 0)), (16, 16))
