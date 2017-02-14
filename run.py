@@ -1,5 +1,7 @@
 import pygame
+import pygame.midi
 import sys
+from time import sleep
 import random
 import math
 
@@ -42,6 +44,13 @@ MENU_OPTION_EXIT = 2
 MENU_OPTION_AI_EASY = 3
 MENU_OPTION_AI_HARD = 4
 
+# Sounds
+
+SOUND_FIRST_PLAYER = 0
+SOUND_SECOND_PLAYER = 1
+SOUND_HUMAN_SCORES = 2
+SOUND_AI_SCORES = 3
+
 # Pygame-specific
 
 pygame.init()
@@ -50,6 +59,9 @@ title_font = pygame.font.SysFont("verdana", TITLE_FONT_SIZE, True)
 menu_font = pygame.font.SysFont("verdana", MENU_FONT_SIZE, True)
 github_font = pygame.font.SysFont("verdana", GITHUB_FONT_SIZE, True)
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+pygame.midi.init()
+midi_out = pygame.midi.Output(0)
+midi_out.set_instrument(80)
 running = True
 clock = pygame.time.Clock()
 FPS = 60
@@ -150,6 +162,29 @@ class Game:
 	def draw_middle_line(self):
 		for n in range(0, WINDOW_HEIGHT, 38):
 			pygame.draw.rect(screen, GAME_COLOR, pygame.Rect((WINDOW_WIDTH / 2) - (MIDDLE_LINE_WIDTH / 2), n, MIDDLE_LINE_WIDTH, MIDDLE_LINE_HEIGHT))
+	
+	def play_sound(self, sound):
+		velocity = 70
+		if sound == SOUND_FIRST_PLAYER:
+			midi_out.note_on(90, velocity)
+			sleep(0.02)
+			midi_out.note_off(90, velocity)
+		elif sound == SOUND_SECOND_PLAYER:
+			midi_out.note_on(96, velocity)
+			sleep(0.02)
+			midi_out.note_off(96, velocity)
+		elif sound == SOUND_HUMAN_SCORES:
+			midi_out.note_on(90, velocity)
+			midi_out.note_on(93, velocity)
+			sleep(0.5)
+			midi_out.note_off(90, velocity)
+			midi_out.note_off(93, velocity)
+		elif sound == SOUND_AI_SCORES:
+			midi_out.note_on(30, velocity)
+			midi_out.note_on(31, velocity)
+			sleep(0.5)
+			midi_out.note_off(30, velocity)
+			midi_out.note_off(31, velocity)
 	
 if __name__ == "__main__":	
 	game = Game()
@@ -256,9 +291,11 @@ if __name__ == "__main__":
 			
 			if game.ball.x < 0:
 				game.score2.value += 1
+				game.play_sound(SOUND_AI_SCORES)
 				game.ball.reset()
 			elif game.ball.x > WINDOW_WIDTH:
 				game.score1.value += 1
+				game.play_sound(SOUND_HUMAN_SCORES)
 				game.ball.reset()
 			if game.score1.value == MAX_SCORE or game.score2.value == MAX_SCORE:
 				game.score1.value = INITIAL_SCORE
@@ -289,9 +326,12 @@ if __name__ == "__main__":
 			if game.check_collision(game.player1, game.ball):
 				game.ball.diff = ((game.player1.y + game.player1.h) / 2) - ((game.ball.y + game.ball.h) / 2)
 				game.ball.bounce(game.ball.diff)
+				game.play_sound(SOUND_FIRST_PLAYER)
 			elif game.check_collision(game.player2, game.ball):
 				game.ball.diff = ((game.player2.y + game.player2.h) / 2) - ((game.ball.y + game.ball.h) / 2)
 				game.ball.bounce(game.ball.diff)
+				game.play_sound(SOUND_SECOND_PLAYER)
+				
 		elif game.current_screen == MAIN_MENU:
 			game.menu_selector.draw()
 			screen.blit(title_font.render("PyClassicPong", 1, GAME_COLOR, (TITLE_FONT_SIZE, TITLE_FONT_SIZE)), ((WINDOW_WIDTH / 2) - ((TITLE_FONT_SIZE / 2) * 8), MENU_FONT_SIZE))
