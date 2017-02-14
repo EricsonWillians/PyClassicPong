@@ -3,11 +3,12 @@ import sys
 import random
 import math
 
-# CONSTANTS
+# Constants
 
 WINDOW_WIDTH = 1024
 WINDOW_HEIGHT = 728
 GAME_COLOR = (255, 255, 255)
+BACKGROUND_COLOR = (0, 0, 0)
 PAD_WIDTH = 16
 PAD_HEIGHT = 64
 PAD_SPEED = 8
@@ -21,21 +22,26 @@ MAX_SCORE = 10
 SCORE_SPACING = 64
 MIDDLE_LINE_WIDTH = 4
 MIDDLE_LINE_HEIGHT = 16
+MAIN_MENU = 0
+SINGLE_PLAYER = 1
+MULTIPLAYER = 2
+MENU_FONT_SIZE = 32
+MENU_SELECTOR_SIZE = 8
+MENU_OPTION_SINGLE_PLAYER = 0
+MENU_OPTION_MULTIPLAYER = 1
+MENU_OPTION_EXIT = 2
+
+# Pygame-specific
 
 pygame.init()
-
-monospace = pygame.font.SysFont("monospace", SCORE_SIZE, True)
+score_font = pygame.font.SysFont("verdana", SCORE_SIZE, True)
+menu_font = pygame.font.SysFont("verdana", MENU_FONT_SIZE, True)
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 running = True
+clock = pygame.time.Clock()
+FPS = 60
 
-def check_collision(a, b):
-	h_overlaps = True
-	v_overlaps = True
-	if (a.x > (b.x + b.w)) or ((a.x + a.w) < b.x):
-		h_overlaps = False
-	if (a.y > (b.y + b.h)) or ((a.y + a.h) < b.y):
-		v_overlaps = False
-	return h_overlaps and v_overlaps
+# Game objects
 
 class Pad:
 
@@ -57,7 +63,8 @@ class Ball:
 	def __init__(self, x, y):
 		self.x = x
 		self.y = y
-		self.direction = 180
+		# Flip a coin to decide which player will get the ball first.
+		self.direction = (lambda: 180 if random.randint(-1, 1) else 360)()
 		self.speed = BALL_SPEED
 		self.w = BALL_SIZE
 		self.h = BALL_SIZE
@@ -65,7 +72,7 @@ class Ball:
 	def reset(self):
 		self.x = (WINDOW_WIDTH / 2) - (BALL_SIZE / 2)
 		self.y = (WINDOW_HEIGHT / 2) - (BALL_SIZE / 2)
-		self.direction = 180
+		self.direction = (lambda: 180 if random.randint(-1, 1) else 360)()
 		self.speed = BALL_SPEED
 	
 	def bounce(self, diff):
@@ -88,92 +95,153 @@ class Score:
 		self.surface = pygame.Surface((SCORE_SIZE, SCORE_SIZE))
 		
 	def draw(self):
-		screen.blit(monospace.render(str(self.value), 1, GAME_COLOR, (self.w, self.h)), (self.x, self.y))
+		screen.blit(score_font.render(str(self.value), 1, GAME_COLOR, (self.w, self.h)), (self.x, self.y))
 
-clock = pygame.time.Clock()
-FPS = 60
-player1 = Pad(PAD_WIDTH, (WINDOW_HEIGHT / 2) - (PAD_HEIGHT / 2), FIRST_PLAYER)
-player2 = Pad(WINDOW_WIDTH - (PAD_WIDTH * 2), (WINDOW_HEIGHT / 2) - (PAD_HEIGHT / 2), SECOND_PLAYER)
-ball = Ball((WINDOW_WIDTH / 2) - (BALL_SIZE / 2), (WINDOW_HEIGHT / 2) - (BALL_SIZE / 2))
-score1 = Score(((WINDOW_WIDTH / 2) - (SCORE_SIZE / 3.5) - SCORE_SPACING), SCORE_SPACING, 1)
-score2 = Score(((WINDOW_WIDTH / 2) - (SCORE_SIZE / 3.5) + SCORE_SPACING), SCORE_SPACING, 2)
-
-def handle_events():
-	for e in pygame.event.get():
-		if e.type == pygame.QUIT:
-			sys.exit()
-		elif e.type == pygame.KEYDOWN:
-			if e.key == pygame.K_ESCAPE:
-				sys.exit()
-			elif e.key == pygame.K_w:
-				player1.up = True
-				player1.down = False
-			elif e.key == pygame.K_s:
-				player1.up = False
-				player1.down = True
-			elif e.key == pygame.K_UP:
-				player2.up = True
-				player2.down = False
-			elif e.key == pygame.K_DOWN:
-				player2.up = False
-				player2.down = True
-
-def draw_middle_line():
-	for n in range(0, WINDOW_HEIGHT, 38):
-		pygame.draw.rect(screen, GAME_COLOR, pygame.Rect((WINDOW_WIDTH / 2) - (MIDDLE_LINE_WIDTH / 2), n, MIDDLE_LINE_WIDTH, MIDDLE_LINE_HEIGHT))
-
-def redraw():
-	pygame.display.flip()
-	screen.fill((0, 0, 0))
-	draw_middle_line()
-	player1.draw()
-	player2.draw()
-	score1.draw()
-	score2.draw()
-	ball.draw()
-	direction_radians = math.radians(ball.direction)
-	ball.x += ball.speed * math.cos(direction_radians)
-	ball.y -= ball.speed * math.sin(direction_radians)
+class MenuSelector:
 	
-	if ball.x < 0:
-		score2.value += 1
-		ball.reset()
-	elif ball.x > WINDOW_WIDTH:
-		score1.value += 1
-		ball.reset()
-	if score1.value == MAX_SCORE or score2.value == MAX_SCORE:
-		score1.value = INITIAL_SCORE
-		score2.value = INITIAL_SCORE
-		ball.reset 
-	
-	# Delimit boundaries for the paddles.
-	
-	if player1.up and player1.y > 0:
-		player1.y -= PAD_SPEED
-	elif player1.down and (player1.y + player1.h) < WINDOW_HEIGHT:
-		player1.y += PAD_SPEED
-	if player2.up and player2.y > 0:
-		player2.y -= PAD_SPEED
-	elif player2.down and (player2.y + player2.h) < WINDOW_HEIGHT:
-		player2.y += PAD_SPEED
+	def __init__(self, x, y):
+		self.x = x
+		self.y = y
+		self.w = MENU_SELECTOR_SIZE * 4
+		self.h = MENU_SELECTOR_SIZE
 		
-	# Bounces the ball.
-	
-	if ball.y <= 0:
-		ball.direction = (360 - ball.direction) % 360
-	elif ball.y > WINDOW_HEIGHT - ball.w:
-		ball.direction = (360 - ball.direction) % 360
-	if check_collision(player1, ball):
-		diff = ((player1.y + player1.h) / 2) - ((ball.y + ball.h) / 2)
-		ball.bounce(diff)
-	elif check_collision(player2, ball):
-		diff = ((player2.y + player2.h) / 2) - ((ball.y + ball.h) / 2)
-		ball.bounce(diff)
-	
-	# screen.blit(monospace.render("Bla", 1, (255, 255, 0)), (16, 16))
+	def draw(self):
+		pygame.draw.rect(screen, GAME_COLOR, pygame.Rect(self.x, self.y, self.w, self.h))
 
-while (running):
-	clock.tick(FPS)
-	redraw()
-	#  screen.blit(monospace.render(str(clock.get_fps()), 1, (255, 255, 0)), (16, 32 + LINE_SPACE))
-	handle_events()
+class Game:
+	
+	def __init__(self):
+		self.reset_game()
+
+	def reset_game(self):
+		self.player1 = Pad(PAD_WIDTH, (WINDOW_HEIGHT / 2) - (PAD_HEIGHT / 2), FIRST_PLAYER)
+		self.player2 = Pad(WINDOW_WIDTH - (PAD_WIDTH * 2), (WINDOW_HEIGHT / 2) - (PAD_HEIGHT / 2), SECOND_PLAYER)
+		self.ball = Ball((WINDOW_WIDTH / 2) - (BALL_SIZE / 2), (WINDOW_HEIGHT / 2) - (BALL_SIZE / 2))
+		self.score1 = Score(((WINDOW_WIDTH / 2) - (SCORE_SIZE / 2.8) - SCORE_SPACING * 2), SCORE_SPACING, 1)
+		self.score2 = Score(((WINDOW_WIDTH / 2) - (SCORE_SIZE / 2.8) + SCORE_SPACING * 2), SCORE_SPACING, 2)
+		self.current_screen = MAIN_MENU
+		self.menu_option = MENU_OPTION_SINGLE_PLAYER
+		self.menu_selector = MenuSelector((((WINDOW_WIDTH / 2) - ((MENU_FONT_SIZE / 2) * 7)) - (MENU_SELECTOR_SIZE * 8)), MENU_FONT_SIZE * 6.5)
+	
+	def check_collision(self, a, b):
+		h_overlaps = True
+		v_overlaps = True
+		if (a.x > (b.x + b.w)) or ((a.x + a.w) < b.x):
+			h_overlaps = False
+		if (a.y > (b.y + b.h)) or ((a.y + a.h) < b.y):
+			v_overlaps = False
+		return h_overlaps and v_overlaps
+
+	def draw_middle_line(self):
+		for n in range(0, WINDOW_HEIGHT, 38):
+			pygame.draw.rect(screen, GAME_COLOR, pygame.Rect((WINDOW_WIDTH / 2) - (MIDDLE_LINE_WIDTH / 2), n, MIDDLE_LINE_WIDTH, MIDDLE_LINE_HEIGHT))
+	
+if __name__ == "__main__":	
+	game = Game()
+
+	# Event handling
+
+	def handle_events():
+		for e in pygame.event.get():
+			if e.type == pygame.QUIT:
+				sys.exit()
+			elif e.type == pygame.KEYDOWN:
+				if e.key == pygame.K_ESCAPE:
+					game.current_screen = MAIN_MENU
+					game.reset_game()
+				if game.current_screen == MAIN_MENU:
+					if e.key == pygame.K_w or e.key == pygame.K_UP:
+						if game.menu_option > MENU_OPTION_SINGLE_PLAYER:
+							game.menu_selector.y -= MENU_FONT_SIZE * 1.5
+							game.menu_option -= 1
+					elif e.key == pygame.K_s or e.key == pygame.K_DOWN:
+						if game.menu_option < MENU_OPTION_EXIT:
+							game.menu_selector.y += MENU_FONT_SIZE * 1.5
+							game.menu_option += 1
+					elif e.key == pygame.K_RETURN:
+						if game.menu_option == MENU_OPTION_SINGLE_PLAYER:
+							game.current_screen = SINGLE_PLAYER
+						elif game.menu_option == MENU_OPTION_MULTIPLAYER:
+							game.current_screen = MULTIPLAYER
+						elif game.menu_option == MENU_OPTION_EXIT:
+							sys.exit()
+				elif game.current_screen == SINGLE_PLAYER:
+					if e.key == pygame.K_w:
+						game.player1.up = True
+						game.player1.down = False
+					elif e.key == pygame.K_s:
+						game.player1.up = False
+						game.player1.down = True
+					elif e.key == pygame.K_UP:
+						game.player2.up = True
+						game.player2.down = False
+					elif e.key == pygame.K_DOWN:
+						game.player2.up = False
+						game.player2.down = True
+
+	# Drawing
+
+	def redraw():
+		pygame.display.flip()
+		screen.fill(BACKGROUND_COLOR)
+		
+		if game.current_screen == SINGLE_PLAYER or game.current_screen == MULTIPLAYER:
+			game.draw_middle_line()
+			game.player1.draw()
+			game.player2.draw()
+			game.score1.draw()
+			game.score2.draw()
+			game.ball.draw()
+			
+			# Reseting the game
+			
+			if game.ball.x < 0:
+				game.score2.value += 1
+				game.ball.reset()
+			elif game.ball.x > WINDOW_WIDTH:
+				game.score1.value += 1
+				game.ball.reset()
+			if game.score1.value == MAX_SCORE or game.score2.value == MAX_SCORE:
+				game.score1.value = INITIAL_SCORE
+				game.score2.value = INITIAL_SCORE
+				game.ball.reset 
+			
+			# Delimiting boundaries for the paddles
+			
+			if game.player1.up and game.player1.y > 0:
+				game.player1.y -= PAD_SPEED
+			elif game.player1.down and (game.player1.y + game.player1.h) < WINDOW_HEIGHT:
+				game.player1.y += PAD_SPEED
+			if game.player2.up and game.player2.y > 0:
+				game.player2.y -= PAD_SPEED
+			elif game.player2.down and (game.player2.y + game.player2.h) < WINDOW_HEIGHT:
+				game.player2.y += PAD_SPEED
+				
+			# Bouncing the ball
+			
+			game.direction_radians = math.radians(game.ball.direction)
+			game.ball.x += game.ball.speed * math.cos(game.direction_radians)
+			game.ball.y -= game.ball.speed * math.sin(game.direction_radians)
+			
+			if game.ball.y <= 0:
+				game.ball.direction = (360 - game.ball.direction) % 360
+			elif game.ball.y > WINDOW_HEIGHT - game.ball.w:
+				game.ball.direction = (360 - game.ball.direction) % 360
+			if game.check_collision(game.player1, game.ball):
+				game.ball.diff = ((game.player1.y + game.player1.h) / 2) - ((game.ball.y + game.ball.h) / 2)
+				game.ball.bounce(game.ball.diff)
+			elif game.check_collision(game.player2, game.ball):
+				game.ball.diff = ((game.player2.y + game.player2.h) / 2) - ((game.ball.y + game.ball.h) / 2)
+				game.ball.bounce(game.ball.diff)
+		elif game.current_screen == MAIN_MENU:
+			game.menu_selector.draw()
+			screen.blit(menu_font.render("Single Player", 1, GAME_COLOR, (MENU_FONT_SIZE, MENU_FONT_SIZE)), ((WINDOW_WIDTH / 2) - ((MENU_FONT_SIZE / 2) * 7), MENU_FONT_SIZE * 6))
+			screen.blit(menu_font.render("Multiplayer", 1, GAME_COLOR, (MENU_FONT_SIZE, MENU_FONT_SIZE)), ((WINDOW_WIDTH / 2) - ((MENU_FONT_SIZE / 2) * 7), MENU_FONT_SIZE * 7.5))
+			screen.blit(menu_font.render("Exit", 1, GAME_COLOR, (MENU_FONT_SIZE, MENU_FONT_SIZE)), ((WINDOW_WIDTH / 2) - ((MENU_FONT_SIZE / 2) * 7), MENU_FONT_SIZE * 9))
+
+	# Execution
+
+	while (running):
+		clock.tick(FPS)
+		redraw()
+		handle_events()
