@@ -16,26 +16,39 @@ BALL_SIZE = 16
 BALL_SPEED = 8
 FIRST_PLAYER = 0
 SECOND_PLAYER = 1
+AI_EASY = 0
+AI_HARD = 1
 SCORE_SIZE = 128
 INITIAL_SCORE = 0
 MAX_SCORE = 10
 SCORE_SPACING = 64
 MIDDLE_LINE_WIDTH = 4
 MIDDLE_LINE_HEIGHT = 16
+
+# Menus
+
 MAIN_MENU = 0
 SINGLE_PLAYER = 1
 MULTIPLAYER = 2
+DIFFICULTY = 3
+
+TITLE_FONT_SIZE = 64
 MENU_FONT_SIZE = 32
+GITHUB_FONT_SIZE = 12
 MENU_SELECTOR_SIZE = 8
 MENU_OPTION_SINGLE_PLAYER = 0
 MENU_OPTION_MULTIPLAYER = 1
 MENU_OPTION_EXIT = 2
+MENU_OPTION_AI_EASY = 3
+MENU_OPTION_AI_HARD = 4
 
 # Pygame-specific
 
 pygame.init()
 score_font = pygame.font.SysFont("verdana", SCORE_SIZE, True)
+title_font = pygame.font.SysFont("verdana", TITLE_FONT_SIZE, True)
 menu_font = pygame.font.SysFont("verdana", MENU_FONT_SIZE, True)
+github_font = pygame.font.SysFont("verdana", GITHUB_FONT_SIZE, True)
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 running = True
 clock = pygame.time.Clock()
@@ -82,7 +95,7 @@ class Ball:
 	
 	def draw(self):
 		pygame.draw.rect(screen, GAME_COLOR, pygame.Rect(self.x, self.y, self.w, self.h))
-	
+
 class Score:
 	
 	def __init__(self, x, y, player):
@@ -121,7 +134,9 @@ class Game:
 		self.score2 = Score(((WINDOW_WIDTH / 2) - (SCORE_SIZE / 2.8) + SCORE_SPACING * 2), SCORE_SPACING, 2)
 		self.current_screen = MAIN_MENU
 		self.menu_option = MENU_OPTION_SINGLE_PLAYER
-		self.menu_selector = MenuSelector((((WINDOW_WIDTH / 2) - ((MENU_FONT_SIZE / 2) * 7)) - (MENU_SELECTOR_SIZE * 8)), MENU_FONT_SIZE * 6.5)
+		self.difficulty_menu_option = MENU_OPTION_AI_EASY
+		self.menu_selector = MenuSelector((((WINDOW_WIDTH / 2) - ((MENU_FONT_SIZE / 2) * 6)) - (MENU_SELECTOR_SIZE * 8)), MENU_FONT_SIZE * 8.5)
+		self.ai_difficulty = AI_EASY
 	
 	def check_collision(self, a, b):
 		h_overlaps = True
@@ -160,12 +175,36 @@ if __name__ == "__main__":
 							game.menu_option += 1
 					elif e.key == pygame.K_RETURN:
 						if game.menu_option == MENU_OPTION_SINGLE_PLAYER:
-							game.current_screen = SINGLE_PLAYER
+							game.current_screen = DIFFICULTY
 						elif game.menu_option == MENU_OPTION_MULTIPLAYER:
 							game.current_screen = MULTIPLAYER
 						elif game.menu_option == MENU_OPTION_EXIT:
 							sys.exit()
+				elif game.current_screen == DIFFICULTY:
+					if e.key == pygame.K_w or e.key == pygame.K_UP:
+						if game.difficulty_menu_option > MENU_OPTION_AI_EASY:
+							game.menu_selector.y -= MENU_FONT_SIZE * 1.5
+							game.difficulty_menu_option -= 1
+					elif e.key == pygame.K_s or e.key == pygame.K_DOWN:
+						if game.difficulty_menu_option < MENU_OPTION_AI_HARD:
+							game.menu_selector.y += MENU_FONT_SIZE * 1.5
+							game.difficulty_menu_option += 1
+					elif e.key == pygame.K_RETURN:
+						if game.difficulty_menu_option == MENU_OPTION_AI_EASY:
+							game.ai_difficulty = AI_EASY
+						elif game.difficulty_menu_option == MENU_OPTION_AI_HARD:
+							game.ai_difficulty = AI_HARD
+						game.current_screen = SINGLE_PLAYER
+					if e.key == pygame.K_ESCAPE:
+						game.current_screen = MAIN_MENU
 				elif game.current_screen == SINGLE_PLAYER:
+					if e.key == pygame.K_UP:
+						game.player1.up = True
+						game.player1.down = False
+					elif e.key == pygame.K_DOWN:
+						game.player1.up = False
+						game.player1.down = True
+				elif game.current_screen == MULTIPLAYER:
 					if e.key == pygame.K_w:
 						game.player1.up = True
 						game.player1.down = False
@@ -178,12 +217,32 @@ if __name__ == "__main__":
 					elif e.key == pygame.K_DOWN:
 						game.player2.up = False
 						game.player2.down = True
-
+	
 	# Drawing
 
 	def redraw():
 		pygame.display.flip()
 		screen.fill(BACKGROUND_COLOR)
+		
+		# Controlling the AI
+		
+		if game.current_screen == SINGLE_PLAYER:
+			if game.ai_difficulty == AI_EASY:
+				center = (game.player2.h / 2) - (game.ball.h / 2)
+				chance = random.randint(0, 2)
+				if game.ball.y >= (game.player2.y + (lambda: center if not chance == 1 else random.randint(center, WINDOW_HEIGHT - PAD_HEIGHT))()):
+					game.player2.up = False
+					game.player2.down = True
+				elif game.ball.y <= (game.player2.y + (lambda: center if not chance == 1 else random.randint(center, WINDOW_HEIGHT - PAD_HEIGHT))()):
+					game.player2.up = True
+					game.player2.down = False
+			elif game.ai_difficulty == AI_HARD:
+				if game.ball.y >= (game.player2.y + (game.player2.h / 2) - (game.ball.h / 2)):
+					game.player2.up = False
+					game.player2.down = True
+				elif game.ball.y <= (game.player2.y + (game.player2.h / 2) - (game.ball.h / 2)):
+					game.player2.up = True
+					game.player2.down = False
 		
 		if game.current_screen == SINGLE_PLAYER or game.current_screen == MULTIPLAYER:
 			game.draw_middle_line()
@@ -235,9 +294,16 @@ if __name__ == "__main__":
 				game.ball.bounce(game.ball.diff)
 		elif game.current_screen == MAIN_MENU:
 			game.menu_selector.draw()
-			screen.blit(menu_font.render("Single Player", 1, GAME_COLOR, (MENU_FONT_SIZE, MENU_FONT_SIZE)), ((WINDOW_WIDTH / 2) - ((MENU_FONT_SIZE / 2) * 7), MENU_FONT_SIZE * 6))
-			screen.blit(menu_font.render("Multiplayer", 1, GAME_COLOR, (MENU_FONT_SIZE, MENU_FONT_SIZE)), ((WINDOW_WIDTH / 2) - ((MENU_FONT_SIZE / 2) * 7), MENU_FONT_SIZE * 7.5))
-			screen.blit(menu_font.render("Exit", 1, GAME_COLOR, (MENU_FONT_SIZE, MENU_FONT_SIZE)), ((WINDOW_WIDTH / 2) - ((MENU_FONT_SIZE / 2) * 7), MENU_FONT_SIZE * 9))
+			screen.blit(title_font.render("PyClassicPong", 1, GAME_COLOR, (TITLE_FONT_SIZE, TITLE_FONT_SIZE)), ((WINDOW_WIDTH / 2) - ((TITLE_FONT_SIZE / 2) * 8), MENU_FONT_SIZE))
+			screen.blit(menu_font.render("Single Player", 1, GAME_COLOR, (MENU_FONT_SIZE, MENU_FONT_SIZE)), ((WINDOW_WIDTH / 2) - ((MENU_FONT_SIZE / 2) * 6), MENU_FONT_SIZE * 8))
+			screen.blit(menu_font.render("Multiplayer", 1, GAME_COLOR, (MENU_FONT_SIZE, MENU_FONT_SIZE)), ((WINDOW_WIDTH / 2) - ((MENU_FONT_SIZE / 2) * 6), MENU_FONT_SIZE * 9.5))
+			screen.blit(menu_font.render("Exit", 1, GAME_COLOR, (MENU_FONT_SIZE, MENU_FONT_SIZE)), ((WINDOW_WIDTH / 2) - ((MENU_FONT_SIZE / 2) * 6), MENU_FONT_SIZE * 11))
+			screen.blit(github_font.render("https://github.com/EricsonWillians/PyClassicPong", 1, GAME_COLOR, (GITHUB_FONT_SIZE, GITHUB_FONT_SIZE)), ((WINDOW_WIDTH / 2) - ((GITHUB_FONT_SIZE / 2) * 13.8), GITHUB_FONT_SIZE * 9.5))
+		elif game.current_screen == DIFFICULTY:
+			game.menu_selector.draw()
+			screen.blit(title_font.render("Difficulty", 1, GAME_COLOR, (TITLE_FONT_SIZE, TITLE_FONT_SIZE)), ((WINDOW_WIDTH / 2) - ((TITLE_FONT_SIZE / 2) * 5), MENU_FONT_SIZE))
+			screen.blit(menu_font.render("Beginnerish", 1, GAME_COLOR, (MENU_FONT_SIZE, MENU_FONT_SIZE)), ((WINDOW_WIDTH / 2) - ((MENU_FONT_SIZE / 2) * 6), MENU_FONT_SIZE * 8))
+			screen.blit(menu_font.render("Frustrating", 1, GAME_COLOR, (MENU_FONT_SIZE, MENU_FONT_SIZE)), ((WINDOW_WIDTH / 2) - ((MENU_FONT_SIZE / 2) * 6), MENU_FONT_SIZE * 9.5))
 
 	# Execution
 
