@@ -15,15 +15,14 @@ BALL_SIZE = 16
 BALL_SPEED = 8
 FIRST_PLAYER = 0
 SECOND_PLAYER = 1
-
-NORTHWEST = 0
-NORTHEAST = 1
-SOUTHWEST = 2
-SOUTHEAST = 3
+SCORE_SIZE = 128
+INITIAL_SCORE = 0
+MAX_SCORE = 10
+SCORE_SPACING = 64
 
 pygame.init()
 
-monospace = pygame.font.SysFont("monospace", 22)
+monospace = pygame.font.SysFont("monospace", SCORE_SIZE, True)
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 running = True
 
@@ -46,7 +45,7 @@ class Pad:
 		self.up = False
 		self.down = False
 		self.player = player
-		self.surface = pygame.Surface((16, 64))
+		self.surface = pygame.Surface((PAD_WIDTH, PAD_HEIGHT))
 
 	def draw(self):
 		pygame.draw.rect(screen, GAME_COLOR, pygame.Rect(self.x, self.y, self.w, self.h))
@@ -73,30 +72,29 @@ class Ball:
 		self.speed *= 1.1
 	
 	def draw(self):
-		direction_radians = math.radians(self.direction)
-		
-		self.x += self.speed * math.cos(direction_radians)
-		self.y -= self.speed * math.sin(direction_radians)
-		
-		if self.x < 0:
-			self.reset()
-		elif self.x > WINDOW_WIDTH:
-			self.reset()
-		if self.y <= 0:
-			self.direction = (360 - self.direction) % 360
-		elif self.y > WINDOW_HEIGHT - self.w:
-			self.direction = (360 - self.direction) % 360
-			
 		pygame.draw.rect(screen, GAME_COLOR, pygame.Rect(self.x, self.y, self.w, self.h))
 	
 class Score:
-	pass
+	
+	def __init__(self, x, y, player):
+		self.x = x
+		self.y = y
+		self.w = SCORE_SIZE
+		self.h = SCORE_SIZE
+		self.value = INITIAL_SCORE
+		self.player = player
+		self.surface = pygame.Surface((SCORE_SIZE, SCORE_SIZE))
+		
+	def draw(self):
+		screen.blit(monospace.render(str(self.value), 1, GAME_COLOR, (self.w, self.h)), (self.x, self.y))
 
 clock = pygame.time.Clock()
 FPS = 60
 player1 = Pad(PAD_WIDTH, (WINDOW_HEIGHT / 2) - (PAD_HEIGHT / 2), FIRST_PLAYER)
 player2 = Pad(WINDOW_WIDTH - (PAD_WIDTH * 2), (WINDOW_HEIGHT / 2) - (PAD_HEIGHT / 2), SECOND_PLAYER)
 ball = Ball((WINDOW_WIDTH / 2) - (BALL_SIZE / 2), (WINDOW_HEIGHT / 2) - (BALL_SIZE / 2))
+score1 = Score(((WINDOW_WIDTH / 2) - (SCORE_SIZE / 3.5) - SCORE_SPACING), SCORE_SPACING, 1)
+score2 = Score(((WINDOW_WIDTH / 2) - (SCORE_SIZE / 3.5) + SCORE_SPACING), SCORE_SPACING, 2)
 
 def handle_events():
 	for e in pygame.event.get():
@@ -123,7 +121,27 @@ def redraw():
 	screen.fill((0, 0, 0))
 	player1.draw()
 	player2.draw()
+	score1.draw()
+	score2.draw()
 	ball.draw()
+	direction_radians = math.radians(ball.direction)
+	ball.x += ball.speed * math.cos(direction_radians)
+	ball.y -= ball.speed * math.sin(direction_radians)
+	
+	if ball.x < 0:
+		score2.value += 1
+		ball.reset()
+	elif ball.x > WINDOW_WIDTH:
+		score1.value += 1
+		ball.reset()
+	if ball.y <= 0:
+		ball.direction = (360 - ball.direction) % 360
+	elif ball.y > WINDOW_HEIGHT - ball.w:
+		ball.direction = (360 - ball.direction) % 360
+	if score1.value == MAX_SCORE or score2.value == MAX_SCORE:
+		score1.value = INITIAL_SCORE
+		score2.value = INITIAL_SCORE
+		ball.reset 
 	
 	# Delimit boundaries for the paddles.
 	
