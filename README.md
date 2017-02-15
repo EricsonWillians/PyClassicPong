@@ -4,7 +4,7 @@
 
 An open-source implementation of the classic pong game in Python 3.5.1, using [pygame](http://www.pygame.org/lofi.html).
 
-[![ScreenShot](https://raw.github.com/GabLeRoux/WebMole/master/ressources/WebMole_Youtube_Video.png)](http://youtu.be/vt5fpE0bzSY)
+[![ScreenShot](https://raw.github.com/GabLeRoux/WebMole/master/ressources/WebMole_Youtube_Video.png)](https://www.youtube.com/watch?v=_urFFuwfT3Q)
 
 ## Installation
 
