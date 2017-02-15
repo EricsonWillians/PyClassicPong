@@ -24,7 +24,7 @@ Just execute `run.py` with the Python Interpreter.
 
 ## History
 
-One day I got bored with Java, then I though: WOW, wouldn't be just NICE to write *yet another* pong clone in Python? :o :o :o.
+One day I got bored with Java, then I thought: WOW, wouldn't be just NICE to write *yet another* pong clone in Python? :o :o :o.
 
 ## Credits
 
