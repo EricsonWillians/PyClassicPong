@@ -1,4 +1,3 @@
-```
 # PyClassicPong: Open-Source Pong Game Implementation
 
 A modern, open-source implementation of the classic Pong game using Python 3.5.1 and the [pygame](http://www.pygame.org/lofi.html) library.
@@ -32,4 +31,3 @@ Fueled by coffee.
 ## License
 
 Licensed under the GNU Public License v3.0.
-```
